@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-surface-50: #f8fafc;
+  --color-surface-100: #f1f5f9;
+  --color-surface-200: #e2e8f0;
+  --color-surface-300: #cbd5e1;
+  --color-surface-400: #94a3b8;
+  --color-surface-500: #64748b;
+  --color-surface-600: #475569;
+  --color-surface-700: #334155;
+  --color-surface-800: #1e293b;
+  --color-surface-900: #0f172a;
+  --color-surface-950: #020617;
+
+  --color-steam: #1b2838;
+  --color-steam-light: #2a475e;
+  --color-epic: #2F2F2F;
+  --color-epic-light: #4a4a4a;
+  --color-amazon: #FF9900;
+  --color-amazon-light: #cc7a00;
+  --color-ea: #C40000;
+  --color-ea-light: #e63946;
+  --color-ubisoft: #005AA7;
+  --color-ubisoft-light: #1a73c7;
+  --color-battlenet: #1488DB;
+  --color-battlenet-light: #3da5e8;
+}
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-surface-50 text-surface-900 transition-colors duration-200;
+}
+
+html.dark body {
+  @apply bg-surface-950 text-surface-100;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surface-100;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  @apply bg-surface-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-300 rounded-full;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  @apply bg-surface-600;
+}
