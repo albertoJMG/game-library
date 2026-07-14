@@ -1,4 +1,4 @@
-const PROXY_URL = 'http://localhost:3001/api/igdb/covers'
+const PROXY_URL = '/api/igdb/covers'
 
 export async function fetchIgdbCovers(
   names: string[],

@@ -1,0 +1,9 @@
+services:
+  game-library:
+    build: .
+    container_name: game-library
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    restart: unless-stopped

@@ -1,9 +1,13 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
-const PORT = 3001
+const PORT = process.env.PORT || 3001
+const isProd = process.env.NODE_ENV === 'production'
 
 app.use(cors())
 app.use(express.json())
@@ -123,6 +127,14 @@ app.post('/api/igdb/covers', async (req, res) => {
 app.get('/api/igdb/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+if (isProd) {
+  const distPath = path.join(__dirname, '..', 'dist')
+  app.use(express.static(distPath))
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'))
+  })
+}
 
 app.listen(PORT, () => {
   console.log(`IGDB proxy running on http://localhost:${PORT}`)
