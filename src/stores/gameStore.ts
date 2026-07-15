@@ -209,6 +209,18 @@ export const useGameStore = defineStore('games', () => {
     }
   }
 
+  function toggleFavorite(gameId: string) {
+    const game = allGames.value.find((g) => g.playniteId === gameId)
+    if (game) {
+      game.favorite = !game.favorite
+      if (game.isCustom) {
+        saveJson(STORAGE_KEY_CUSTOM_GAMES, customGames.value)
+      } else {
+        saveJson(STORAGE_KEY_GAMES, games.value)
+      }
+    }
+  }
+
   function addCustomGame(data: CustomGameData): Game {
     const game: Game = {
       playniteId: crypto.randomUUID(),
@@ -409,6 +421,7 @@ export const useGameStore = defineStore('games', () => {
     genreCounts,
     loadGames,
     toggleHidden,
+    toggleFavorite,
     addCustomGame,
     updateCustomGame,
     deleteCustomGame,

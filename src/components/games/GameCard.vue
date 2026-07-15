@@ -34,6 +34,11 @@ function handleHide(event: Event) {
   event.stopPropagation()
   store.toggleHidden(props.game.playniteId)
 }
+
+function handleFavorite(event: Event) {
+  event.stopPropagation()
+  store.toggleFavorite(props.game.playniteId)
+}
 </script>
 
 <template>
@@ -64,19 +69,22 @@ function handleHide(event: Event) {
         <Gamepad2 class="h-12 w-12 text-surface-300 dark:text-surface-600" />
       </div>
 
-      <!-- Favorite badge -->
-      <div
-        v-if="game.favorite"
-        class="absolute right-2 top-2 rounded-full bg-amber-500 p-1 text-white shadow-md"
+      <!-- Favorite button -->
+      <button
+        @click="handleFavorite"
+        class="absolute right-2 top-2 rounded-full p-1 shadow-md transition-all"
+        :class="game.favorite
+          ? 'bg-amber-500 text-white hover:bg-amber-600'
+          : 'bg-black/50 text-white/70 opacity-0 hover:bg-black/70 hover:text-amber-400 group-hover:opacity-100'"
+        :title="game.favorite ? 'Quitar de favoritos' : 'Añadir a favoritos'"
       >
-        <Star class="h-3 w-3" fill="currentColor" />
-      </div>
+        <Star class="h-3 w-3" :fill="game.favorite ? 'currentColor' : 'none'" />
+      </button>
 
       <!-- Hide button -->
       <button
         @click="handleHide"
-        class="absolute right-2 top-2 rounded-full bg-black/50 p-1 text-white/70 opacity-0 shadow-md transition-all hover:bg-black/70 hover:text-white group-hover:opacity-100"
-        :class="game.favorite ? 'top-9' : ''"
+        class="absolute right-2 top-9 rounded-full bg-black/50 p-1 text-white/70 opacity-0 shadow-md transition-all hover:bg-black/70 hover:text-white group-hover:opacity-100"
         title="Ocultar juego"
       >
         <EyeOff class="h-3 w-3" />

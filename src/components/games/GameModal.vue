@@ -49,6 +49,11 @@ function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') close()
 }
 
+function toggleFavorite() {
+  if (!game.value) return
+  store.toggleFavorite(game.value.playniteId)
+}
+
 const gameCategories = computed(() => {
   if (!game.value) return []
   return store.getGameCategories(game.value.playniteId)
@@ -160,9 +165,17 @@ function handleDelete() {
                 >
                   {{ game.sourceName }}
                 </span>
-                <span v-if="game.favorite" class="text-amber-400">
-                  <Star class="h-4 w-4" fill="currentColor" />
-                </span>
+                <button
+                  @click="toggleFavorite"
+                  class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold transition-colors"
+                  :class="game.favorite
+                    ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                    : 'bg-surface-100 text-surface-400 hover:bg-surface-200 hover:text-amber-400 dark:bg-surface-700 dark:text-surface-500 dark:hover:bg-surface-600'"
+                  :title="game.favorite ? 'Quitar de favoritos' : 'Añadir a favoritos'"
+                >
+                  <Star class="h-4 w-4" :fill="game.favorite ? 'currentColor' : 'none'" />
+                  {{ game.favorite ? 'Favorito' : 'Favorito' }}
+                </button>
               </div>
             </div>
           </div>
