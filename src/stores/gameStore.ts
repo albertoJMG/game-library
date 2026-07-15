@@ -391,7 +391,7 @@ export const useGameStore = defineStore('games', () => {
     const BATCH_SIZE = 20
     const namesToFetch: string[] = []
 
-    for (const game of games.value) {
+    for (const game of [...games.value, ...customGames.value]) {
       if (game.steamAppId) continue
       if (igdbCovers.value[game.name] !== undefined) continue
       if (!namesToFetch.includes(game.name)) {
