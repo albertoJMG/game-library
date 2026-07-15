@@ -1,0 +1,17 @@
+{
+  "games": [],
+  "customGames": [],
+  "notes": {},
+  "categories": [],
+  "gameCategories": {},
+  "platformColors": {
+    "Steam": "#1b2838",
+    "Epic": "#2F2F2F",
+    "Amazon": "#FF9900",
+    "EA app": "#C40000",
+    "Ubisoft Connect": "#005AA7",
+    "Battle.net": "#1488DB"
+  },
+  "igdbCovers": {},
+  "lastUpdated": null
+}

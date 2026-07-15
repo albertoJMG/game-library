@@ -3,6 +3,12 @@ import express from 'express'
 import cors from 'cors'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import libraryRoutes from './routes/library.ts'
+import gameRoutes from './routes/games.ts'
+import noteRoutes from './routes/notes.ts'
+import categoryRoutes from './routes/categories.ts'
+import settingsRoutes from './routes/settings.ts'
+import { getLibrary, updateIgdbCovers } from './store.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -52,6 +58,14 @@ async function getAccessToken(): Promise<string> {
 }
 
 const coverCache = new Map<string, string>()
+
+function loadCoverCacheFromStore() {
+  const { igdbCovers } = getLibrary()
+  for (const [name, url] of Object.entries(igdbCovers)) {
+    coverCache.set(name, url)
+  }
+}
+loadCoverCacheFromStore()
 
 async function searchCovers(names: string[]): Promise<Record<string, string>> {
   const result: Record<string, string> = {}
@@ -117,6 +131,7 @@ app.post('/api/igdb/covers', async (req, res) => {
     }
 
     const covers = await searchCovers(names)
+    updateIgdbCovers(covers)
     res.json(covers)
   } catch (err) {
     console.error('IGDB proxy error:', err)
@@ -127,6 +142,12 @@ app.post('/api/igdb/covers', async (req, res) => {
 app.get('/api/igdb/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+app.use('/api/library', libraryRoutes)
+app.use('/api/games', gameRoutes)
+app.use('/api/notes', noteRoutes)
+app.use('/api/categories', categoryRoutes)
+app.use('/api/settings', settingsRoutes)
 
 if (isProd) {
   const distPath = path.join(__dirname, '..', 'dist')

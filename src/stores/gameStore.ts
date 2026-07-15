@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { Game, RawGame, UserCategory, UserNote, CustomGameData } from '@/types'
 import { fetchIgdbCovers } from '@/services/igdb'
+import { api } from '@/services/api'
 
 const STORAGE_KEY_GAMES = 'vg_games'
 const STORAGE_KEY_NOTES = 'vg_notes'
@@ -31,14 +32,6 @@ function loadJson<T>(key: string, fallback: T): T {
   }
 }
 
-function saveJson(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch (e) {
-    console.error(`Error saving ${key}:`, e)
-  }
-}
-
 function transformGame(raw: RawGame): Game {
   return {
     playniteId: raw.playniteId,
@@ -59,18 +52,14 @@ function transformGame(raw: RawGame): Game {
 }
 
 export const useGameStore = defineStore('games', () => {
-  const games = ref<Game[]>(loadJson(STORAGE_KEY_GAMES, []))
-  const notes = ref<Record<string, UserNote>>(loadJson(STORAGE_KEY_NOTES, {}))
-  const categories = ref<UserCategory[]>(loadJson(STORAGE_KEY_CATEGORIES, []))
-  const gameCategories = ref<Record<string, string[]>>(
-    loadJson(STORAGE_KEY_GAME_CATEGORIES, {}),
-  )
-  const platformColors = ref<Record<string, string>>(
-    loadJson(STORAGE_KEY_PLATFORM_COLORS, { ...DEFAULT_PLATFORM_COLORS }),
-  )
-  const igdbCovers = ref<Record<string, string>>(loadJson(STORAGE_KEY_IGDB_COVERS, {}))
-  const customGames = ref<Game[]>(loadJson(STORAGE_KEY_CUSTOM_GAMES, []))
-  const lastUpdated = ref<string | null>(loadJson<string | null>(STORAGE_KEY_LAST_UPDATED, null))
+  const games = ref<Game[]>([])
+  const notes = ref<Record<string, UserNote>>({})
+  const categories = ref<UserCategory[]>([])
+  const gameCategories = ref<Record<string, string[]>>({})
+  const platformColors = ref<Record<string, string>>({ ...DEFAULT_PLATFORM_COLORS })
+  const igdbCovers = ref<Record<string, string>>({})
+  const customGames = ref<Game[]>([])
+  const lastUpdated = ref<string | null>(null)
 
   const searchQuery = ref('')
   const selectedPlatforms = ref<string[]>([])
@@ -83,8 +72,9 @@ export const useGameStore = defineStore('games', () => {
   const sortDirection = ref<'asc' | 'desc'>('asc')
   const selectedGame = ref<Game | null>(null)
   const sidebarOpen = ref(true)
+  const isLoading = ref(true)
 
-  const isLoaded = computed(() => games.value.length > 0 || customGames.value.length > 0)
+  const isLoaded = computed(() => !isLoading.value && (games.value.length > 0 || customGames.value.length > 0))
 
   const allGames = computed(() => [...games.value, ...customGames.value])
 
@@ -189,11 +179,60 @@ export const useGameStore = defineStore('games', () => {
     return counts
   })
 
+  async function init() {
+    isLoading.value = true
+    try {
+      const data = await api.getLibrary()
+      games.value = data.games
+      customGames.value = data.customGames
+      notes.value = data.notes
+      categories.value = data.categories
+      gameCategories.value = data.gameCategories
+      platformColors.value = { ...DEFAULT_PLATFORM_COLORS, ...data.platformColors }
+      igdbCovers.value = data.igdbCovers
+      lastUpdated.value = data.lastUpdated
+    } catch {
+      console.warn('Server unavailable, falling back to localStorage')
+      migrateFromLocalStorage()
+    }
+    isLoading.value = false
+    if (games.value.length > 0) {
+      fetchMissingCovers()
+    }
+  }
+
+  function migrateFromLocalStorage() {
+    const localGames = loadJson<Game[]>(STORAGE_KEY_GAMES, [])
+    const localCustom = loadJson<Game[]>(STORAGE_KEY_CUSTOM_GAMES, [])
+    if (localGames.length === 0 && localCustom.length === 0) return
+
+    games.value = localGames
+    customGames.value = localCustom
+    notes.value = loadJson(STORAGE_KEY_NOTES, {})
+    categories.value = loadJson(STORAGE_KEY_CATEGORIES, [])
+    gameCategories.value = loadJson(STORAGE_KEY_GAME_CATEGORIES, {})
+    platformColors.value = { ...DEFAULT_PLATFORM_COLORS, ...loadJson(STORAGE_KEY_PLATFORM_COLORS, {}) }
+    igdbCovers.value = loadJson(STORAGE_KEY_IGDB_COVERS, {})
+    lastUpdated.value = loadJson<string | null>(STORAGE_KEY_LAST_UPDATED, null)
+
+    api.importGames([...games.value, ...customGames.value]).then(() => {
+      localStorage.removeItem(STORAGE_KEY_GAMES)
+      localStorage.removeItem(STORAGE_KEY_CUSTOM_GAMES)
+      localStorage.removeItem(STORAGE_KEY_NOTES)
+      localStorage.removeItem(STORAGE_KEY_CATEGORIES)
+      localStorage.removeItem(STORAGE_KEY_GAME_CATEGORIES)
+      localStorage.removeItem(STORAGE_KEY_PLATFORM_COLORS)
+      localStorage.removeItem(STORAGE_KEY_IGDB_COVERS)
+      localStorage.removeItem(STORAGE_KEY_LAST_UPDATED)
+    }).catch(() => {
+      console.error('Failed to migrate localStorage to server')
+    })
+  }
+
   function loadGames(rawGames: RawGame[]) {
     games.value = rawGames.map(transformGame)
-    saveJson(STORAGE_KEY_GAMES, games.value)
     lastUpdated.value = new Date().toISOString()
-    saveJson(STORAGE_KEY_LAST_UPDATED, lastUpdated.value)
+    api.importGames(games.value).catch(() => {})
     fetchMissingCovers()
   }
 
@@ -202,9 +241,9 @@ export const useGameStore = defineStore('games', () => {
     if (game) {
       game.hidden = !game.hidden
       if (game.isCustom) {
-        saveJson(STORAGE_KEY_CUSTOM_GAMES, customGames.value)
+        api.updateCustomGame(gameId, { hidden: game.hidden }).catch(() => {})
       } else {
-        saveJson(STORAGE_KEY_GAMES, games.value)
+        api.updateGame(gameId, { hidden: game.hidden }).catch(() => {})
       }
     }
   }
@@ -214,9 +253,9 @@ export const useGameStore = defineStore('games', () => {
     if (game) {
       game.favorite = !game.favorite
       if (game.isCustom) {
-        saveJson(STORAGE_KEY_CUSTOM_GAMES, customGames.value)
+        api.updateCustomGame(gameId, { favorite: game.favorite }).catch(() => {})
       } else {
-        saveJson(STORAGE_KEY_GAMES, games.value)
+        api.updateGame(gameId, { favorite: game.favorite }).catch(() => {})
       }
     }
   }
@@ -236,7 +275,7 @@ export const useGameStore = defineStore('games', () => {
       isCustom: true,
     }
     customGames.value.push(game)
-    saveJson(STORAGE_KEY_CUSTOM_GAMES, customGames.value)
+    api.addCustomGame(game).catch(() => {})
     return game
   }
 
@@ -251,17 +290,15 @@ export const useGameStore = defineStore('games', () => {
       game.isInstalled = data.isInstalled
       game.favorite = data.favorite
       game.hidden = data.hidden
-      saveJson(STORAGE_KEY_CUSTOM_GAMES, customGames.value)
+      api.updateCustomGame(gameId, game).catch(() => {})
     }
   }
 
   function deleteCustomGame(gameId: string) {
     customGames.value = customGames.value.filter((g) => g.playniteId !== gameId)
-    saveJson(STORAGE_KEY_CUSTOM_GAMES, customGames.value)
     delete notes.value[gameId]
-    saveJson(STORAGE_KEY_NOTES, notes.value)
     delete gameCategories.value[gameId]
-    saveJson(STORAGE_KEY_GAME_CATEGORIES, gameCategories.value)
+    api.deleteCustomGame(gameId).catch(() => {})
   }
 
   function saveNote(gameId: string, text: string) {
@@ -269,7 +306,7 @@ export const useGameStore = defineStore('games', () => {
       text,
       updatedAt: new Date().toISOString(),
     }
-    saveJson(STORAGE_KEY_NOTES, notes.value)
+    api.saveNote(gameId, text).catch(() => {})
   }
 
   function getNote(gameId: string): string {
@@ -283,7 +320,7 @@ export const useGameStore = defineStore('games', () => {
       color,
     }
     categories.value.push(cat)
-    saveJson(STORAGE_KEY_CATEGORIES, categories.value)
+    api.addCategory({ name, color }).catch(() => {})
     return cat
   }
 
@@ -292,13 +329,12 @@ export const useGameStore = defineStore('games', () => {
     if (cat) {
       cat.name = name
       cat.color = color
-      saveJson(STORAGE_KEY_CATEGORIES, categories.value)
+      api.updateCategory(id, { name, color }).catch(() => {})
     }
   }
 
   function removeCategory(id: string) {
     categories.value = categories.value.filter((c) => c.id !== id)
-    saveJson(STORAGE_KEY_CATEGORIES, categories.value)
 
     for (const gameId of Object.keys(gameCategories.value)) {
       const cats = gameCategories.value[gameId]
@@ -306,7 +342,7 @@ export const useGameStore = defineStore('games', () => {
         gameCategories.value[gameId] = cats.filter((catId) => catId !== id)
       }
     }
-    saveJson(STORAGE_KEY_GAME_CATEGORIES, gameCategories.value)
+    api.deleteCategory(id).catch(() => {})
   }
 
   function toggleGameCategory(gameId: string, categoryId: string) {
@@ -319,7 +355,7 @@ export const useGameStore = defineStore('games', () => {
     } else {
       gameCategories.value[gameId].splice(idx, 1)
     }
-    saveJson(STORAGE_KEY_GAME_CATEGORIES, gameCategories.value)
+    api.updateGameCategories(gameId, gameCategories.value[gameId]).catch(() => {})
   }
 
   function getGameCategories(gameId: string): string[] {
@@ -332,7 +368,7 @@ export const useGameStore = defineStore('games', () => {
 
   function setPlatformColor(sourceName: string, color: string) {
     platformColors.value[sourceName] = color
-    saveJson(STORAGE_KEY_PLATFORM_COLORS, platformColors.value)
+    api.updatePlatformColors(platformColors.value).catch(() => {})
   }
 
   function getIgdbCover(gameName: string): string | undefined {
@@ -359,8 +395,6 @@ export const useGameStore = defineStore('games', () => {
         igdbCovers.value[name] = url
       }
     }
-
-    saveJson(STORAGE_KEY_IGDB_COVERS, igdbCovers.value)
   }
 
   function clearAllData() {
@@ -377,20 +411,8 @@ export const useGameStore = defineStore('games', () => {
     showInstalledOnly.value = false
     showHiddenOnly.value = false
     lastUpdated.value = null
-    localStorage.removeItem(STORAGE_KEY_GAMES)
-    localStorage.removeItem(STORAGE_KEY_CUSTOM_GAMES)
-    localStorage.removeItem(STORAGE_KEY_NOTES)
-    localStorage.removeItem(STORAGE_KEY_CATEGORIES)
-    localStorage.removeItem(STORAGE_KEY_GAME_CATEGORIES)
-    localStorage.removeItem(STORAGE_KEY_PLATFORM_COLORS)
-    localStorage.removeItem(STORAGE_KEY_IGDB_COVERS)
-    localStorage.removeItem(STORAGE_KEY_LAST_UPDATED)
     platformColors.value = { ...DEFAULT_PLATFORM_COLORS }
     igdbCovers.value = {}
-  }
-
-  if (games.value.length > 0) {
-    fetchMissingCovers()
   }
 
   return {
@@ -411,6 +433,7 @@ export const useGameStore = defineStore('games', () => {
     sortDirection,
     selectedGame,
     sidebarOpen,
+    isLoading,
     isLoaded,
     allGames,
     allGenres,
@@ -419,6 +442,7 @@ export const useGameStore = defineStore('games', () => {
     topPlayed,
     platformCounts,
     genreCounts,
+    init,
     loadGames,
     toggleHidden,
     toggleFavorite,

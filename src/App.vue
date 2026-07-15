@@ -7,11 +7,12 @@ import GameModal from '@/components/games/GameModal.vue'
 import CustomGameModal from '@/components/games/CustomGameModal.vue'
 import JsonDropZone from '@/components/library/JsonDropZone.vue'
 import { useGameStore } from '@/stores/gameStore'
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ArrowUp } from '@lucide/vue'
 import type { Game } from '@/types'
 
 const store = useGameStore()
+onMounted(() => store.init())
 
 const showLayout = computed(() => store.isLoaded)
 const showScrollTop = ref(false)
