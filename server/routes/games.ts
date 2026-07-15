@@ -24,7 +24,7 @@ router.delete('/:id', (req, res) => {
 
 router.post('/custom', (req, res) => {
   const game: Game = {
-    playniteId: crypto.randomUUID(),
+    playniteId: req.body.playniteId ?? crypto.randomUUID(),
     name: req.body.name,
     sourceName: req.body.sourceName ?? 'Custom',
     platforms: req.body.platforms ?? ['PC (Windows)'],
