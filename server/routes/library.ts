@@ -14,11 +14,13 @@ router.post('/import', (req, res) => {
     res.status(400).json({ error: 'games array required' })
     return
   }
+  console.log(`[library] Importing ${games.length} games`)
   const transformed = games.map((g) => ({
     ...g,
     isCustom: false,
   }))
   const data = updateGames(transformed)
+  console.log(`[library] Saved. Total games: ${data.games.length}`)
   res.json(data)
 })
 
