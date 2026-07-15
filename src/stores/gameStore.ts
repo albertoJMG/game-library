@@ -377,6 +377,10 @@ export const useGameStore = defineStore('games', () => {
     igdbCovers.value = {}
   }
 
+  if (games.value.length > 0) {
+    fetchMissingCovers()
+  }
+
   return {
     games,
     customGames,
