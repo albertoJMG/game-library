@@ -44,12 +44,31 @@ export interface LibraryData {
   lastUpdated: string | null
 }
 
-function readData(): LibraryData {
-  const raw = fs.readFileSync(DATA_FILE, 'utf-8')
-  return JSON.parse(raw)
+const EMPTY_DATA: LibraryData = {
+  games: [],
+  customGames: [],
+  notes: {},
+  categories: [],
+  gameCategories: {},
+  platformColors: {},
+  igdbCovers: {},
+  lastUpdated: null,
 }
 
-function writeData(data: LibraryData): void {
+function readData(): LibraryData {
+  try {
+    const raw = fs.readFileSync(DATA_FILE, 'utf-8')
+    return JSON.parse(raw)
+  } catch {
+    return { ...EMPTY_DATA }
+  }
+}
+
+export function writeData(data: LibraryData): void {
+  const dir = path.dirname(DATA_FILE)
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2))
 }
 
