@@ -13,6 +13,17 @@ const STORAGE_KEY_IGDB_COVERS = 'vg_igdb_covers'
 const STORAGE_KEY_CUSTOM_GAMES = 'vg_custom_games'
 const STORAGE_KEY_LAST_UPDATED = 'vg_last_updated'
 
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
+
 const DEFAULT_PLATFORM_COLORS: Record<string, string> = {
   Steam: '#1b2838',
   Epic: '#2F2F2F',
@@ -262,7 +273,7 @@ export const useGameStore = defineStore('games', () => {
 
   function addCustomGame(data: CustomGameData): Game {
     const game: Game = {
-      playniteId: crypto.randomUUID(),
+      playniteId: generateId(),
       name: data.name,
       sourceName: data.sourceName,
       platforms: ['PC (Windows)'],
@@ -315,7 +326,7 @@ export const useGameStore = defineStore('games', () => {
 
   function addCategory(name: string, color: string): UserCategory {
     const cat: UserCategory = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name,
       color,
     }
